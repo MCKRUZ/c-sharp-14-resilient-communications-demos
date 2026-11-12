@@ -82,7 +82,7 @@ builder.Services.AddHttpClient<ShippingEstimateClient>(client =>
         o.Retry.UseJitter = false;
     });
 
-// m04-c05, paste v2, final: chain the standard resilience handler onto the
+// chain the standard resilience handler onto the
 // same IHttpClientBuilder AddGrpcClient returned.
 builder.Services.AddGrpcClient<Inventory.InventoryClient>(o =>
 {

@@ -33,10 +33,11 @@ dotnet run --project OrderProcessing
 
 See [BackendStubs/README.md](BackendStubs/README.md) for the services, ports and the faults the demos arm.
 
-## Two things that are not on screen
+## Three things that differ from what is on screen
 
 - `DemoMenu.cs` and `DemoLog.cs` are the demo harness: the numbered menu and its console logging. They are in every solution so the code runs, and the clips do not show them. Where a clip's `finish/` differs from `start/` only in `DemoMenu.cs`, the clip README says the change was made off camera.
 - Some clips paste a file several times, building it up (v1, then v2, and so on). `finish/` holds the last version. The earlier versions appear on screen only while the clip builds up to it.
+- The pasted code in clips 4.4, 4.5 and 4.6 carried comments starting with a tag such as `m04-c05, paste v2, final:`, and later clips carry those files forward. The tag is removed here and the rest of the comment is kept. This is the only place the code differs from what the video shows.
 
 ## Clips
 

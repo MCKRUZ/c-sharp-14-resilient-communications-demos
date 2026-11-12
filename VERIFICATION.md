@@ -69,4 +69,4 @@ These are the lines the OCR could not find anywhere in the clip:
 - OCR reads a frame as text. It cannot prove a line is absent, only that it did not find it. A line it found is on screen; a line it missed may still be.
 - Frames are sampled every 2 seconds, so a version visible for under 2 seconds can be missed.
 - The check is against `delivery/` in the course repository. Where a clip was re-exported after delivery, a newer video can differ.
-- Authoring comments such as `// m04-c05, paste v2, final: ...` are in the pasted code and on screen in the delivered videos. They are kept exactly.
+- One deliberate difference from the videos: the pasted code in clips 4.4, 4.5, 4.6 and the later files that carry them forward had authoring tags in comments, such as `// m04-c05, paste v2, final: chain the ...`. The tag is removed here and the rest of the comment is kept. Everything else is exactly as pasted.

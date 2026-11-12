@@ -363,7 +363,7 @@ public class DemoMenu
         Console.WriteLine($"SKU-1002 price: {price:C} (returned in {stopwatch.Elapsed.TotalMilliseconds:F0} ms)");
     }
 
-    // m04-c06, paste v4, final: switch on ex.StatusCode.
+    // switch on ex.StatusCode.
     private async Task CheckStockAsync()
     {
         var request = new CheckStockRequest { Sku = "ABC-123", Quantity = 2 };

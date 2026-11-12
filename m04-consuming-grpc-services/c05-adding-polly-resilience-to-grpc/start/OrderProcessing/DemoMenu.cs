@@ -348,7 +348,7 @@ public class DemoMenu
         Console.WriteLine($"SKU-1002 price: {price:C} (returned in {stopwatch.Elapsed.TotalMilliseconds:F0} ms)");
     }
 
-    // m04-c04, paste v4, final: read the typed response.
+    // read the typed response.
     private static async Task CheckStockAsync()
     {
         using var channel = GrpcChannel.ForAddress("https://localhost:5001");
