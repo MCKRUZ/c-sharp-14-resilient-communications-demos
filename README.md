@@ -5,17 +5,17 @@ The demo code for each clip of the Pluralsight course *Resilient Communications 
 - `start/`: the solution as the clip opens.
 - `finish/`: the solution exactly as the clip leaves it.
 
-Each folder is a complete, runnable solution. Jump into any clip by opening its `start/`, and compare against `finish/` to see what the clip changed. Modules 1 to 5 are here.
+Each folder is a complete, runnable solution. Jump into any clip by opening its `start/`, and compare against `finish/` to see what the clip changed. All six modules are here.
 
 ## Requirements
 
 - .NET 10 SDK
 - PowerShell
-- For modules 4 and 5, a trusted development certificate: `dotnet dev-certs https --trust`
+- For modules 4, 5 and 6, a trusted development certificate: `dotnet dev-certs https --trust`
 
 ## Run a clip
 
-1. Start the backend stubs from the repository root. Modules 2 and 5 use auth mode.
+1. Start the backend stubs from the repository root. Modules 2, 5 and 6 use auth mode.
 
 ```powershell
 dotnet run --project BackendStubs
@@ -33,11 +33,10 @@ dotnet run --project OrderProcessing
 
 See [BackendStubs/README.md](BackendStubs/README.md) for the services, ports and the faults the demos arm.
 
-## Three things that differ from what is on screen
+## Two things that are not on screen
 
 - `DemoMenu.cs` and `DemoLog.cs` are the demo harness: the numbered menu and its console logging. They are in every solution so the code runs, and the clips do not show them. Where a clip's `finish/` differs from `start/` only in `DemoMenu.cs`, the clip README says the change was made off camera.
 - Some clips paste a file several times, building it up (v1, then v2, and so on). `finish/` holds the last version. The earlier versions appear on screen only while the clip builds up to it.
-- The pasted code in clips 4.4, 4.5 and 4.6 carried comments starting with a tag such as `m04-c05, paste v2, final:`, and later clips carry those files forward. The tag is removed here and the rest of the comment is kept. This is the only place the code differs from what the video shows.
 
 ## Clips
 
@@ -69,8 +68,13 @@ See [BackendStubs/README.md](BackendStubs/README.md) for the services, ports and
 | 5. Streaming and Concurrent Communications | Recovering a broken stream | [`m05-streaming-and-concurrent-comms/c04-recovering-a-broken-stream`](m05-streaming-and-concurrent-comms/c04-recovering-a-broken-stream) |
 | 5. Streaming and Concurrent Communications | Fanning out concurrent HTTP requests | [`m05-streaming-and-concurrent-comms/c05-fanning-out-concurrent-http-requests`](m05-streaming-and-concurrent-comms/c05-fanning-out-concurrent-http-requests) |
 | 5. Streaming and Concurrent Communications | Handling partial failures across a fan-out | [`m05-streaming-and-concurrent-comms/c06-handling-partial-failures-across-fan-out`](m05-streaming-and-concurrent-comms/c06-handling-partial-failures-across-fan-out) |
+| 6. Controlling and Correlating Traffic | Applying client-side rate limiting | [`m06-controlling-correlating-traffic/c02-applying-client-side-rate-limiting`](m06-controlling-correlating-traffic/c02-applying-client-side-rate-limiting) |
+| 6. Controlling and Correlating Traffic | Choosing a rate-limiting algorithm | [`m06-controlling-correlating-traffic/c03-choosing-a-rate-limiting-algorithm`](m06-controlling-correlating-traffic/c03-choosing-a-rate-limiting-algorithm) |
+| 6. Controlling and Correlating Traffic | Combining rate limits with resilience pipelines | [`m06-controlling-correlating-traffic/c04-combining-rate-limits-with-resilience`](m06-controlling-correlating-traffic/c04-combining-rate-limits-with-resilience) |
+| 6. Controlling and Correlating Traffic | Correlating requests with TraceContext | [`m06-controlling-correlating-traffic/c05-correlating-requests-with-tracecontext`](m06-controlling-correlating-traffic/c05-correlating-requests-with-tracecontext) |
+| 6. Controlling and Correlating Traffic | Propagating W3C trace headers end to end | [`m06-controlling-correlating-traffic/c06-propagating-w3c-trace-headers-end-to-end`](m06-controlling-correlating-traffic/c06-propagating-w3c-trace-headers-end-to-end) |
 
-Clips with no demo code (slides only) have no folder: 1.1, 1.2, 3.1, 4.1, 5.1.
+Clips with no demo code (slides only) have no folder: 1.1, 1.2, 3.1, 4.1, 5.1, 6.1 and 6.7.
 
 ## How the code was checked against the videos
 

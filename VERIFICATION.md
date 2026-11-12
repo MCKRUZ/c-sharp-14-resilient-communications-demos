@@ -1,15 +1,15 @@
 # Verification: does the code match the delivered clips?
 
-Each `finish/` folder was rebuilt from the clip's recorded demo script: the starter, plus every whole-file paste the script made, in order. The recording log confirms every paste step ran. All 74 pastes across modules 1 to 5 replace a whole file, so no editor behaviour had to be simulated.
+Each `finish/` folder was rebuilt from the clip's recorded demo script: the starter, plus every whole-file paste the script made, in order. The recording log confirms every paste step ran. Of the 91 pastes across the six modules, 90 replace a whole file and one fills an empty file, so no editor behaviour had to be simulated.
 
 That gives the code the clip *pasted*. To check it is what the clip *shows*, each delivered video was read by OCR (a frame every 2 seconds, editor pane only) and every line a clip adds or changes was searched for on screen.
 
 | Check | Result |
 | --- | --- |
-| All 26 `start/` and 26 `finish/` solutions, plus BackendStubs, build with `dotnet build` | 0 errors |
-| Changed lines checked against the video | 317 |
-| Legible on screen, exact match by OCR | 252 |
-| Not matched exactly, but the line's identifiers are on screen in one frame (OCR garbled it, or an editor hint such as `options:` was inserted mid-line) | 54 |
+| All 31 `start/` and 31 `finish/` solutions, plus BackendStubs, build with `dotnet build` | 0 errors |
+| Changed lines checked against the video | 350 |
+| Legible on screen, exact match by OCR | 282 |
+| Not matched exactly, but the line's identifiers are on screen in one frame (OCR garbled it, or an editor hint such as `options:` was inserted mid-line) | 57 |
 | No frame shows the line | 11 |
 
 Lines in the last group are mostly `using` directives and lines near the top of a file that the video scrolls past after a whole-file paste. Their text comes from the paste in the script, not from a frame.
@@ -45,6 +45,9 @@ I also compared frames by eye for: m03-c06 (PricingClient), m03-c07 (Program.cs,
 | 5.4 Recovering a broken stream | 10 | 7 | 3 | 0 |
 | 5.5 Fanning out concurrent HTTP requests | 20 | 19 | 0 | 1 |
 | 5.6 Handling partial failures across a fan-out | 41 | 34 | 7 | 0 |
+| 6.2 Applying client-side rate limiting | 24 | 24 | 0 | 0 |
+| 6.4 Combining rate limits with resilience pipelines | 3 | 2 | 1 | 0 |
+| 6.5 Correlating requests with TraceContext | 6 | 4 | 2 | 0 |
 
 Clip 1.3 changes no source file, so it has nothing to compare. It only runs the starter.
 
@@ -69,4 +72,4 @@ These are the lines the OCR could not find anywhere in the clip:
 - OCR reads a frame as text. It cannot prove a line is absent, only that it did not find it. A line it found is on screen; a line it missed may still be.
 - Frames are sampled every 2 seconds, so a version visible for under 2 seconds can be missed.
 - The check is against `delivery/` in the course repository. Where a clip was re-exported after delivery, a newer video can differ.
-- One deliberate difference from the videos: the pasted code in clips 4.4, 4.5, 4.6 and the later files that carry them forward had authoring tags in comments, such as `// m04-c05, paste v2, final: chain the ...`. The tag is removed here and the rest of the comment is kept. Everything else is exactly as pasted.
+- Authoring comments such as `// m04-c05, paste v2, final: ...` are in the pasted code and on screen in the delivered videos. They are kept exactly.

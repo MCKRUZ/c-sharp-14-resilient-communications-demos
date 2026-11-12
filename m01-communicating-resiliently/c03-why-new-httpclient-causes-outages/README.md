@@ -11,7 +11,7 @@ Two demo beats: run the textbook `using var client = new HttpClient()` payment c
 
 ## What changes in this clip
 
-- No source file changes. The clip runs the starter as it is.
+- No source file changes. The clip runs or reads the starter as it is.
 
 ## Run it
 

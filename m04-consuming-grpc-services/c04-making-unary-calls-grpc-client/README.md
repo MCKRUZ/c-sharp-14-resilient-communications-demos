@@ -11,7 +11,7 @@ Four demo beats: build a hand-wired `GrpcChannel` and `InventoryClient` inline i
 
 ## What changes in this clip
 
-- No source file changes. The clip runs the starter as it is.
+- No file shown on screen changes. Only the demo harness does (see below).
 
 Changed off camera (demo harness, see the root README): `DemoMenu.cs`.
 

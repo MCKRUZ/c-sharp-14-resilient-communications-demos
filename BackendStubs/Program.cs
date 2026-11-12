@@ -110,6 +110,29 @@ using OrderProcessing.Shipping;
 //     "fail" makes :5205 answer 503 to every call.
 //   - POST /admin/fanout/reset          clears the latency and the fail mode.
 // All admin routes live on :5200, exempt from the bearer check.
+//
+// M06 TRAFFIC CONTROL AND TRACING (Controlling and correlating traffic). Every
+// surface below is OFF by default: with no admin call ever made, m01-m05 behave
+// exactly as before (the recorders below only observe).
+//   - The payment gateway (:5201 and :5211) now records what it SEES: how many
+//     charge calls arrived, the most in flight at once, and the most that arrived
+//     inside any one-second span. The demo prints these so the viewer sees the
+//     gateway's own point of view, not the client's claim about itself.
+//     GET  /admin/payments/stats          { total, peakInFlight, maxInOneSecond,
+//                                           waves: [{ count, atMs }] }
+//     POST /admin/payments/stats/reset    clears the counters
+//     POST /admin/payments/latency        { "delayMs": 500 } a persistent fixed
+//                                         delay on every charge (m06-c03's slow
+//                                         calls); /admin/payments/reset clears it
+//                                         and the counters too.
+//   - Every service records the W3C traceparent header of each request it gets
+//     (HTTP stubs by port, gRPC by service name), read straight off the wire and
+//     not from any server-side Activity.
+//     GET  /admin/trace/{traceId}         the calls that carried that trace id,
+//                                         oldest first, with the caller's span id
+//     POST /admin/trace/reset             clears the log
+//   - GET /echo/headers on :5200 reflects the request headers it received
+//     (m06-c06: shows the traceparent HttpClient attached on its own).
 
 var requireAuth = args.Contains("--require-auth")
     || Environment.GetEnvironmentVariable("DEMO_STUBS_REQUIRE_AUTH") == "1";
@@ -157,6 +180,8 @@ var tokens = new TokenStore(requireAuth);
 var paymentFaults = new PaymentFaultController();
 var pricingFaults = new PricingFaultController();
 var fanout = new FanoutController();
+var traffic = new PaymentTrafficRecorder();
+var traceLog = new TraceLog();
 
 // Port-scoped bearer check. The auth service itself (:5200) is always open.
 app.Use(async (context, next) =>
@@ -171,6 +196,19 @@ app.Use(async (context, next) =>
     context.Response.StatusCode = StatusCodes.Status401Unauthorized;
     context.Response.Headers.WWWAuthenticate = "Bearer";
     await context.Response.WriteAsJsonAsync(new { error = "missing or invalid bearer token" });
+});
+
+// m06: remember which trace each request belonged to. Runs after the bearer check,
+// so an unauthorized call is never recorded as served.
+app.Use(async (context, next) =>
+{
+    var service = TraceLog.ServiceFor(context.Connection.LocalPort, context.Request.Path);
+    if (service is not null)
+    {
+        traceLog.Record(service, context.Request.Method, context.Request.Path, context.Request.Headers["traceparent"].ToString());
+    }
+
+    await next(context);
 });
 
 app.MapPost("/connect/token", (TokenRequest request) =>
@@ -205,8 +243,34 @@ app.MapPost("/admin/payments/queue-failures", (PaymentQueueRequest request) =>
 app.MapPost("/admin/payments/reset", () =>
 {
     paymentFaults.Reset();
+    traffic.Reset();
     return Results.Ok(new { reset = true });
 });
+
+app.MapPost("/admin/payments/latency", (PaymentLatencyRequest request) =>
+{
+    traffic.SetDelay(request.DelayMs);
+    return Results.Ok(new { delayMs = request.DelayMs });
+});
+
+app.MapGet("/admin/payments/stats", () => Results.Ok(traffic.Snapshot()));
+
+app.MapPost("/admin/payments/stats/reset", () =>
+{
+    traffic.ResetCounters();
+    return Results.Ok(new { reset = true });
+});
+
+app.MapGet("/admin/trace/{traceId}", (string traceId) => Results.Ok(traceLog.ForTrace(traceId)));
+
+app.MapPost("/admin/trace/reset", () =>
+{
+    traceLog.Reset();
+    return Results.Ok(new { reset = true });
+});
+
+app.MapGet("/echo/headers", (HttpContext context) =>
+    Results.Ok(context.Request.Headers.ToDictionary(h => h.Key, h => h.Value.ToString())));
 
 app.MapPost("/admin/pricing/slow-next", (PricingSlowRequest request) =>
 {
@@ -253,6 +317,16 @@ app.MapPost("/admin/fanout/reset", () =>
 app.MapPost("/payments/charge", async (HttpContext context, ChargeRequest request, CancellationToken cancellationToken) =>
 {
     var gateway = context.Connection.LocalPort == 5211 ? "sandbox" : "primary";
+
+    using var visit = traffic.Enter();
+    try
+    {
+        await traffic.DelayAsync(cancellationToken);
+    }
+    catch (OperationCanceledException)
+    {
+        return Results.Empty;
+    }
 
     var fault = paymentFaults.NextOutcome();
     if (fault is { StallMilliseconds: { } stallMs })
@@ -765,6 +839,171 @@ internal sealed class TokenStore
         lock (_lock)
         {
             return _issued.TryGetValue(token, out var expiresAt) && expiresAt > DateTimeOffset.UtcNow;
+        }
+    }
+}
+
+internal sealed record PaymentLatencyRequest(int DelayMs);
+
+// m06 payment traffic recorder. Watches /payments/charge from the gateway's side:
+// how many calls arrived, the most in flight at once, and the most that arrived
+// inside any one-second span. Counters only observe; the only knob is the fixed
+// per-call delay (default 0), so every earlier clip behaves as before. A fixed
+// delay on every charge is what gives m06-c03's concurrency beat calls that stay
+// in flight long enough to count.
+internal sealed class PaymentTrafficRecorder
+{
+    private readonly List<long> _arrivals = new();
+    private readonly Lock _lock = new();
+    private int _inFlight;
+    private int _peakInFlight;
+    private int _delayMilliseconds;
+
+    public IDisposable Enter()
+    {
+        lock (_lock)
+        {
+            _arrivals.Add(System.Diagnostics.Stopwatch.GetTimestamp());
+            _inFlight++;
+            _peakInFlight = Math.Max(_peakInFlight, _inFlight);
+        }
+
+        return new Visit(this);
+    }
+
+    public Task DelayAsync(CancellationToken cancellationToken)
+    {
+        var delay = Volatile.Read(ref _delayMilliseconds);
+        return delay > 0 ? Task.Delay(delay, cancellationToken) : Task.CompletedTask;
+    }
+
+    public void SetDelay(int delayMs) => Volatile.Write(ref _delayMilliseconds, Math.Max(0, delayMs));
+
+    public void Reset()
+    {
+        SetDelay(0);
+        ResetCounters();
+    }
+
+    public void ResetCounters()
+    {
+        lock (_lock)
+        {
+            _arrivals.Clear();
+            _peakInFlight = _inFlight;
+        }
+    }
+
+    public object Snapshot()
+    {
+        lock (_lock)
+        {
+            var oneSecond = System.Diagnostics.Stopwatch.Frequency;
+            var sorted = _arrivals.Order().ToArray();
+            var maxInOneSecond = 0;
+            var start = 0;
+
+            for (var end = 0; end < sorted.Length; end++)
+            {
+                while (sorted[end] - sorted[start] >= oneSecond)
+                {
+                    start++;
+                }
+
+                maxInOneSecond = Math.Max(maxInOneSecond, end - start + 1);
+            }
+
+            // Waves: arrivals bunched together (gaps under 100 ms) count as one wave,
+            // reported with its size and when it landed after the first arrival. This is
+            // how a burst held back by a limiter reads: "5 at +0.0 s, 5 at +1.0 s".
+            var waves = new List<object>();
+            var waveStart = 0;
+            for (var i = 1; i <= sorted.Length; i++)
+            {
+                if (i == sorted.Length || (sorted[i] - sorted[i - 1]) * 1000 / oneSecond >= 100)
+                {
+                    var atMs = (int)((sorted[waveStart] - sorted[0]) * 1000 / oneSecond);
+                    waves.Add(new { count = i - waveStart, atMs });
+                    waveStart = i;
+                }
+            }
+
+            return new { total = sorted.Length, peakInFlight = _peakInFlight, maxInOneSecond, waves };
+        }
+    }
+
+    private void Leave()
+    {
+        lock (_lock)
+        {
+            _inFlight--;
+        }
+    }
+
+    private sealed class Visit(PaymentTrafficRecorder owner) : IDisposable
+    {
+        public void Dispose() => owner.Leave();
+    }
+}
+
+internal sealed record TraceEntry(int Sequence, string Service, string Method, string Path, string TraceId, string ParentSpanId);
+
+// m06 trace log. Remembers the W3C traceparent header ("00-<trace id>-<parent span id>-<flags>")
+// of every request the services receive, read straight off the wire. It never creates or
+// continues an Activity itself: what is recorded is exactly what the client sent, which is
+// the point of m06-c06.
+internal sealed class TraceLog
+{
+    private const int Capacity = 5000;
+
+    private readonly Queue<TraceEntry> _entries = new();
+    private readonly Lock _lock = new();
+    private int _sequence;
+
+    public static string? ServiceFor(int port, PathString path) => port switch
+    {
+        5201 => "payments",
+        5211 => "payments-sandbox",
+        5202 => "pricing",
+        5203 => "catalog",
+        5204 => "discounts",
+        5205 => "shipping-estimate",
+        5001 when path.Value?.Contains("Inventory", StringComparison.Ordinal) == true => "inventory",
+        5001 when path.Value?.Contains("Shipping", StringComparison.Ordinal) == true => "shipping",
+        _ => null,
+    };
+
+    public void Record(string service, string method, string path, string traceparent)
+    {
+        var parts = traceparent.Split('-');
+        var traceId = parts.Length == 4 ? parts[1] : string.Empty;
+        var parentSpanId = parts.Length == 4 ? parts[2] : string.Empty;
+
+        lock (_lock)
+        {
+            _entries.Enqueue(new TraceEntry(++_sequence, service, method, path, traceId, parentSpanId));
+            while (_entries.Count > Capacity)
+            {
+                _entries.Dequeue();
+            }
+        }
+    }
+
+    public TraceEntry[] ForTrace(string traceId)
+    {
+        lock (_lock)
+        {
+            return _entries
+                .Where(entry => string.Equals(entry.TraceId, traceId, StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+        }
+    }
+
+    public void Reset()
+    {
+        lock (_lock)
+        {
+            _entries.Clear();
         }
     }
 }
