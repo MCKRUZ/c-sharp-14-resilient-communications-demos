@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+option csharp_namespace = "OrderProcessing.Inventory";
+
+// Server-side copy of the contract the student authors in
+// OrderProcessing/Protos/inventory.proto across m04-c02. Both sides compile
+// their own copy from the same text, the same way two independently
+// deployed services would in a real system.
+service Inventory {
+  rpc CheckStock (CheckStockRequest) returns (CheckStockResponse);
+}
+
+message CheckStockRequest {
+  string sku = 1;
+  int32 quantity = 2;
+}
+
+message CheckStockResponse {
+  bool in_stock = 1;
+  int32 available = 2;
+}
