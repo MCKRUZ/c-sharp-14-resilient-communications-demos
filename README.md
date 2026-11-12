@@ -75,7 +75,3 @@ See [BackendStubs/README.md](BackendStubs/README.md) for the services, ports and
 | 6. Controlling and Correlating Traffic | Propagating W3C trace headers end to end | [`m06-controlling-correlating-traffic/c06-propagating-w3c-trace-headers-end-to-end`](m06-controlling-correlating-traffic/c06-propagating-w3c-trace-headers-end-to-end) |
 
 Clips with no demo code (slides only) have no folder: 1.1, 1.2, 3.1, 4.1, 5.1, 6.1 and 6.7.
-
-## How the code was checked against the videos
-
-See [VERIFICATION.md](VERIFICATION.md).
